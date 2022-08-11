@@ -61,7 +61,7 @@ def save_ref_imgs(dir):
         masks.append(ref_mask_resized)
 
         ref_img = np.array(ref_img)[:,:,::-1]
-        ref_img[ref_mask == 0,:] = 0
+        # ref_img[ref_mask == 0,:] = 0
         ref_img = ref_img[ref_rmin:ref_rmax, ref_cmin:ref_cmax, :]
         ref_img = cv2.resize(ref_img, (250, 50))
         imgs.append(ref_img)
@@ -74,14 +74,13 @@ def save_ref_imgs(dir):
 def change_teeth(input_image_path, output_path):
     input_img = imread(input_image_path)
     input_mask = get_teeth_mask(input_img)
-    input_img = np.array(input_img)[:,:,::-1]
-    plt.ion();
-    plt.figure()
-    plt.imshow(input_img.copy())
+    input_img = np.array(input_img)[:,:,::-1]           # BGR to RGB
 
     input_rmin, input_rmax, input_cmin, input_cmax = get_bbox_from_mask(input_mask)
 
     input_mask_teeth = input_mask[input_rmin:input_rmax, input_cmin:input_cmax]
+
+
 
     # ref_img = imread(ref_image_path)
     # ref_mask = get_teeth_mask(ref_img)
@@ -113,7 +112,9 @@ def change_teeth(input_image_path, output_path):
 
     ref_img = ref_imgs[max_idx]
     ref_img = cv2.resize(ref_img, (input_cmax - input_cmin, input_rmax - input_rmin))
-    np.putmask(input_teeth_part, ref_img != 0, ref_img)
+    # np.putmask(input_teeth_part, ref_img != 0, ref_img)
+    print(input_teeth_part.shape, input_mask_teeth.shape, ref_img.shape)
+    input_teeth_part[input_mask_teeth != 0,:] = ref_img[input_mask_teeth != 0,:]
     # input_teeth_part[(ref_img != 0).all(axis=-1)] = ref_img
 
     # new_teeth = style_transfer("content.png", "style.png")
@@ -122,13 +123,12 @@ def change_teeth(input_image_path, output_path):
     # new_teeth[ref_mask == 0, :] = 0
     # np.putmask(input_teeth_part, new_teeth != 0, new_teeth)
     cv2.imwrite(output_path, input_img)
-    plt.figure()
-    plt.imshow(input_img)
 
 
 # save_ref_imgs("ref_imgs")
 change_teeth('input_imgs/Capture.PNG', "1.png")
-# change_teeth('input_imgs/2.PNG', "1.png")
+change_teeth('input_imgs/1.PNG', "2.png")
+change_teeth('input_imgs/2.PNG', "3.png")
 # change_teeth('input_imgs/Capture.PNG',  "input_imgs/2.png", "2.png")
 # change_teeth('input_imgs/Capture.PNG',  "input_imgs/3.png", "3.png")
 # change_teeth('input_imgs/Capture.PNG',  "input_imgs/4.png", "4.png")
