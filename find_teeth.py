@@ -7,8 +7,6 @@ import numpy as np
 import os
 import matplotlib.pyplot as plt
 
-from style import style_transfer
-
 net = BiSeNet(n_classes=19)
 
 net.load_state_dict(torch.load("models/face.pth", map_location=torch.device('cpu')))
@@ -71,66 +69,97 @@ def save_ref_imgs(dir):
     np.save('masks.npy', masks)
     np.save('imgs.npy', imgs)
 
+def extract_teeth_and_save(input_path, output_path):
+    input_img = imread(input_path)
+    input_mask = get_teeth_mask(input_img)
+    input_img = np.array(input_img)
+    input_img_gray = cv2.cvtColor(input_img, cv2.COLOR_BGR2GRAY)
+    input_img_gray[input_mask == 0] = 0
+    input_rmin, input_rmax, input_cmin, input_cmax = get_bbox_from_mask(input_mask)
+    teeth_part = input_img[input_rmin:input_rmax, input_cmin:input_cmax]
+    cv2.imwrite(output_path, teeth_part[:,:,::-1])
+
+def extract_teeth_parts_in_dir(input_dir, output_dir):
+    for image_path in os.listdir(input_dir):
+        input_path = os.path.join(input_dir, image_path)
+        output_path = os.path.join(output_dir, image_path)
+        extract_teeth_and_save(input_path, output_path)
+
 def change_teeth(input_image_path, output_path):
     input_img = imread(input_image_path)
     input_mask = get_teeth_mask(input_img)
-    input_img = np.array(input_img)[:,:,::-1]           # BGR to RGB
+    input_img = np.array(input_img)
+    input_img_gray = cv2.cvtColor(input_img, cv2.COLOR_BGR2GRAY)
+    input_img_gray[input_mask == 0] = 0
 
     input_rmin, input_rmax, input_cmin, input_cmax = get_bbox_from_mask(input_mask)
+    input_img_gray_teeth = input_img_gray[input_rmin:input_rmax, input_cmin:input_cmax]
+    # input_img_gray_teeth = cv2.equalizeHist(input_img_gray_teeth)
+    edged = cv2.Canny(input_img_gray_teeth, 30, 200)
+    fig = plt.figure(figsize=(1, 3))
+    fig.add_subplot(1, 3, 1)
+    plt.imshow(input_img)
+    fig.add_subplot(1, 3, 2)
+    plt.imshow(input_img_gray_teeth, cmap='gray')
+    fig.add_subplot(1, 3, 3)
+    plt.imshow(edged)
+    plt.show()
 
-    input_mask_teeth = input_mask[input_rmin:input_rmax, input_cmin:input_cmax]
 
 
+    # # ref_img = imread(ref_image_path)
+    # # ref_mask = get_teeth_mask(ref_img)
+    # # # write_mask("ref_mask.png", ref_mask)
+    # # ref_rmin, ref_rmax, ref_cmin, ref_cmax = get_bbox_from_mask(ref_mask)
 
-    # ref_img = imread(ref_image_path)
-    # ref_mask = get_teeth_mask(ref_img)
-    # # write_mask("ref_mask.png", ref_mask)
-    # ref_rmin, ref_rmax, ref_cmin, ref_cmax = get_bbox_from_mask(ref_mask)
+    # # ref_mask_teeth = ref_mask[ref_rmin:ref_rmax, ref_cmin:ref_cmax]
 
-    # ref_mask_teeth = ref_mask[ref_rmin:ref_rmax, ref_cmin:ref_cmax]
+    # ref_masks = np.load("masks.npy")
+    # ref_imgs = np.load("imgs.npy")
 
-    ref_masks = np.load("masks.npy")
-    ref_imgs = np.load("imgs.npy")
+    # max_sim = 0
+    # max_idx = -1
 
-    max_sim = 0
-    max_idx = -1
+    # for i in range(ref_masks.shape[0]):
+    #     ref_mask = ref_masks[i]
+    #     sim = compare_shape(input_mask_teeth, ref_mask)
+    #     if sim > max_sim:
+    #         max_sim = sim
+    #         max_idx = i
 
-    for i in range(ref_masks.shape[0]):
-        ref_mask = ref_masks[i]
-        sim = compare_shape(input_mask_teeth, ref_mask)
-        if sim > max_sim:
-            max_sim = sim
-            max_idx = i
+    # # cv2.imwrite("style.png", ref_imgs[max_idx])
+    # # ref_img = np.array(ref_img)[:,:,::-1]
+    # # ref_img[ref_mask == 0,:] = 0
+    # # ref_img = ref_img[ref_rmin:ref_rmax, ref_cmin:ref_cmax, :]
+    # # ref_img = cv2.resize(ref_img, (input_cmax - input_cmin, input_rmax - input_rmin))
+    # input_teeth_part = input_img[input_rmin:input_rmax, input_cmin:input_cmax, :]
+    # # cv2.imwrite("content.png", cv2.resize(input_teeth_part, (250, 50)))
 
-    # cv2.imwrite("style.png", ref_imgs[max_idx])
-    # ref_img = np.array(ref_img)[:,:,::-1]
-    # ref_img[ref_mask == 0,:] = 0
-    # ref_img = ref_img[ref_rmin:ref_rmax, ref_cmin:ref_cmax, :]
+    # ref_img = ref_imgs[max_idx]
     # ref_img = cv2.resize(ref_img, (input_cmax - input_cmin, input_rmax - input_rmin))
-    input_teeth_part = input_img[input_rmin:input_rmax, input_cmin:input_cmax, :]
-    # cv2.imwrite("content.png", cv2.resize(input_teeth_part, (250, 50)))
+    # # np.putmask(input_teeth_part, ref_img != 0, ref_img)
+    # print(input_teeth_part.shape, input_mask_teeth.shape, ref_img.shape)
+    # input_teeth_part[input_mask_teeth != 0,:] = ref_img[input_mask_teeth != 0,:]
+    # # input_teeth_part[(ref_img != 0).all(axis=-1)] = ref_img
 
-    ref_img = ref_imgs[max_idx]
-    ref_img = cv2.resize(ref_img, (input_cmax - input_cmin, input_rmax - input_rmin))
-    # np.putmask(input_teeth_part, ref_img != 0, ref_img)
-    print(input_teeth_part.shape, input_mask_teeth.shape, ref_img.shape)
-    input_teeth_part[input_mask_teeth != 0,:] = ref_img[input_mask_teeth != 0,:]
-    # input_teeth_part[(ref_img != 0).all(axis=-1)] = ref_img
-
-    # new_teeth = style_transfer("content.png", "style.png")
-    # new_teeth = cv2.resize(new_teeth, (input_cmax - input_cmin, input_rmax - input_rmin))
-    # ref_mask = cv2.resize(ref_mask, (input_cmax - input_cmin, input_rmax - input_rmin))
-    # new_teeth[ref_mask == 0, :] = 0
-    # np.putmask(input_teeth_part, new_teeth != 0, new_teeth)
-    cv2.imwrite(output_path, input_img)
+    # # new_teeth = style_transfer("content.png", "style.png")
+    # # new_teeth = cv2.resize(new_teeth, (input_cmax - input_cmin, input_rmax - input_rmin))
+    # # ref_mask = cv2.resize(ref_mask, (input_cmax - input_cmin, input_rmax - input_rmin))
+    # # new_teeth[ref_mask == 0, :] = 0
+    # # np.putmask(input_teeth_part, new_teeth != 0, new_teeth)
+    # cv2.imwrite(output_path, input_img)
 
 
 # save_ref_imgs("ref_imgs")
-change_teeth('input_imgs/Capture.PNG', "1.png")
-change_teeth('input_imgs/1.PNG', "2.png")
-change_teeth('input_imgs/2.PNG', "3.png")
+# change_teeth('input_imgs/Capture.PNG', "1.png")
+# change_teeth('input_imgs/1.PNG', "2.png")
+# change_teeth('input_imgs/4.PNG', "2.png")
+# change_teeth('input_imgs/2.PNG', "3.png")
+# change_teeth('input_imgs/5.PNG', "3.png")
 # change_teeth('input_imgs/Capture.PNG',  "input_imgs/2.png", "2.png")
 # change_teeth('input_imgs/Capture.PNG',  "input_imgs/3.png", "3.png")
 # change_teeth('input_imgs/Capture.PNG',  "input_imgs/4.png", "4.png")
 # change_teeth('input_imgs/Capture.PNG',  "input_imgs/5.png", "5.png")
 # change_teeth('input_imgs/Capture.PNG',  "input_imgs/6.jpg", "6.png")
+
+extract_teeth_parts_in_dir('input_imgs', "output")
